@@ -13,14 +13,14 @@ library(jsonlite)
 
 base <- 'https://urban.microsoft.com/api/EclipseData/'
 
-api_key <- ' 7C713FE6-BB43-484E-963A-EBA89A203658'
+api_key <- ''
 
 device_list <- "GetDeviceList?city=Chicago"
 
 latest_reading <- "GetLatestReadings?city=Chicago"
 
 
-#Tthis requires more optional parameters
+# Tthis requires more optional parameters
 # The amount of data returned by this API call can be massive. 
 # Timeouts may occur. See notes below. . If devices (subset of devices separated 
 # by comma as query parameter) is not included then the maximum timeframe is 24 
@@ -147,18 +147,8 @@ df <- df %>% filter(is.na(mean_calibratedpm25)==FALSE)
 df <- df %>% mutate(longitude = unlist(map(df$geometry,1)),
          latitude = unlist(map(df$geometry,2)))
 df <- df %>% st_drop_geometry()
-write.csv(df, "data/chicago_air_quality.csv",row.names = FALSE)
-#raw_data <- GET("https://urban.microsoft.com/api/EclipseData/GetDeviceList?city=Chicago",add_headers(ApiKey=api_key))
-#raw_data <- GET("https://urban.microsoft.com/api/EclipseData/GetLatestReadings?city=Chicago",add_headers(ApiKey=api_key))
 
-# df <- fromJSON(rawToChar(raw_data$content), flatten = TRUE)
-# df$latitude <- as.numeric(df$latitude)
-# df$longitude <- as.numeric(df$longitude)
-# df <- df %>% dplyr::filter(latitude>1 & latitude<8000)
-# df <- df %>% dplyr::filter(longitude>-100)
-# df<- st_as_sf(df,coords = c("longitude","latitude"),crs="+proj=longlat +datum=WGS84")
-# df %>% st_geometry() %>% plot()
-
+#write.csv(df, "data/chicago_air_quality.csv",row.names = FALSE)
 
 ################################################################################
                       # Urban Heat Island Calcuation #
@@ -372,9 +362,10 @@ tmap::tm_shape(chicago) +
 
 chicago <- chicago %>% st_drop_geometry() %>% select(-starts_with("drop"))
 
-write.csv(chicago,"data/chicago_block_heat.csv",row.names = FALSE)
+#write.csv(chicago,"data/chicago_block_heat.csv",row.names = FALSE)
 
 ################################################################################
+# Calculate some cutpoint variables based on NDVI  
 
 ndvi_1 <- NDVIfun(raster_list[[1]]$NIR, raster_list[[1]]$red)
 ndvi_2 <- NDVIfun(raster_list[[2]]$NIR, raster_list[[2]]$red)
@@ -416,9 +407,10 @@ chicago <- bind_cols(chicago,chicago_impervious)
 chicago <- bind_cols(chicago,chicago_high_veg)
 chicago <- chicago %>% st_drop_geometry() %>% dplyr::select(geoid10,impervious_surface,high_veg,plantable_land)
 
-write.csv(chicago,"data/block_ndvi_metrics.csv",row.names = F)
+#write.csv(chicago,"data/block_ndvi_metrics.csv",row.names = F)
 
 ################################################################################
+# Bring in the demographic data about blocks
 
 chicago <- st_read("cluster_data/chicago_boundaries/blocks/geo_export_0a836b4b-86b6-416d-a2a3-4700d035bb01.shp")
 chicago <- chicago %>% filter(!tractce10 %in% c("980000","770602"))
@@ -433,25 +425,6 @@ chicago <- chicago %>% dplyr::filter(block_area>=units::set_units(100, m^2))
 df3 <- read_csv("data/ACSDT5Y2019.B17010_2022-08-11T103618/ACSDT5Y2019.B17010-Data.csv",skip=1)
 df4 <- read_csv("data/ACSDT5Y2019.B03002_2022-08-12T065151/ACSDT5Y2019.B03002_data_with_overlays_2022-08-12T065151.csv",skip=1)
 
-# starting with block groups, assign values to block level for race and poverty
-# df1 <- df1 %>% select(block_group_id=id,total=`Estimate!!Total:`,
-#                       white_alone=`Estimate!!Total:!!White alone`,
-#                       black_alone=`Estimate!!Total:!!Black or African American alone`,
-#                       asian_alone=`Estimate!!Total:!!Asian alone`)
-# df1 <- df1 %>% mutate(
-#   pct_white_alone=white_alone/total,
-#   pct_black_alone=black_alone/total,
-#   pct_asian_alone=asian_alone/total,
-#   pct_other_race=1-pct_white_alone-pct_black_alone-pct_asian_alone
-# )
-# 
-# df2 <- df2 %>% select(block_group_id=Geography,
-#                       total=`Estimate!!Total:`,
-#                       hispanic_total=`Estimate!!Total:!!Hispanic or Latino`)
-# 
-# df2 <- df2 %>% mutate(
-#   pct_hispanic=hispanic_total/total
-# )
 
 df3 <- df3 %>% select(block_group_id=Geography,
                       total=`Estimate!!Total:`,
@@ -489,4 +462,4 @@ chicago$block_group_id <- str_sub(chicago$block_group_id, end=-4)
 chicago <- left_join(chicago,df_final,by="block_group_id")
 chicago <- chicago %>% st_drop_geometry() %>% select(geoid10,block_group_id,starts_with("pct"))
 
-write.csv(chicago, "chicago_block_demographics.csv",row.names = F)
+#write.csv(chicago, "chicago_block_demographics.csv",row.names = F)
