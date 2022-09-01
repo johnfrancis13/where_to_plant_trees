@@ -5,8 +5,8 @@ library(raster)
 library(lidR)
 library(tmap)
 
-# I want to add in a layer that is all hieght not just canopy, can redo this process
-# and then just tag it onto the patches that already exist... hopefully
+# THE FIRST VERSION OF THIS FILE ONLY INCLUDED TREE HEIGHT INSTEAD OF THE HEIGHT 
+# OF EACH PIXEL, SO THIS VERSION ADD THAT LAYER IN
 
 lidarlist <- list.files("D:/chicago_lidar_tiles_all/") %>% Filter(function(x) {str_detect(x,"las")}, .)
 lidarlist_path <- unlist(lapply(lidarlist, function(i){paste0("D:/chicago_lidar_tiles_all/",i)}))
@@ -150,7 +150,7 @@ patchifyR <- function(img, patch_size){
 
 
 start_time <- Sys.time()
-for(i in  1107:length(lidarlist)){
+for(i in  1:length(lidarlist)){
   print(i)
   #### Read in the LAS File
   temp_las <- readLAS(lidarlist_path[i])
@@ -240,6 +240,8 @@ loop_time <- end_time - start_time
 
 
 
+# Some issues with LiDAR files that were different sizes, missing data, etc.
+# Removing those before moving to the CNN
 test <- stack(paste0("D:/final_data/2017_2/",testlist[3432]))
 
 test <- stack("D:/final_data/2017_2/P_9_X0_481_X1_720_Y0_481_Y1_720_1122.tif")
@@ -263,82 +265,8 @@ for(i in 1:length(testlist)){
   
 }
 
+# check to make sure it looks alright
 
 test <- stack("D:/final_data/2017_2/P_1_X0_1_X1_240_Y0_1_Y1_240_109.tif")
 plot(test)
-
-#################################################################################
-# see if you project them that they still get NA, are these salvegable? do i need 
-# to loop through and delete a bunch of them?
-
-# JUST GOING TO IGNORE FOR NOW, CAN COME BACK TO THIS IF I CARE LATER
-
-test <- stack("D:/final_data/2017_2/missing/P_7_X0_481_X1_720_Y0_1_Y1_240_1004.tif")
-plot(test)
-
-
-sent_2_2017_10m <- stack("D:/chicago_sentinel_images/2017/sent_2_2017_10m.tif")
-names(sent_2_2017_10m) <- c("blue", 'green', 'red', 'B8')
-
-plot(sent_2_2017_10m)
-
-sent_2_2017_10m_temp <- projectRaster(from = sent_2_2017_10m, to = raster(
-  extent(test), resolution = 3.28, crs = st_crs(sent_2_2017_10m)$proj4string)
-  , method="ngb")
-
-# i=1
-# start_time <- Sys.time()
-# ################## Loop over the 1131 Lidar files ##############################
-# for(i in  1:length(lidarlist)){
-#   print(i)
-#   #### Read in the LAS File
-#   temp_las <- readLAS(lidarlist_path[i])
-#   
-#   skip_to_next <- FALSE
-#   
-#   tryCatch( # need to skip to next image in scenario where there are no trees...
-#     # Process the LiDAR, outputting the raster layer for tree crown height
-#     tree_height_raster <- process_lidar(lasfile = temp_las),
-#     
-#     error = function(e) { 
-#       message(paste("An error occurred for item", i, ":\n"), e)
-#       skip_to_next <<- TRUE})
-#   if(skip_to_next) { next }  
-#   
-#   # need to reproject everything to the new resolution
-#   
-#   tree_height_raster <- projectRaster(from = tree_height_raster, to = raster(
-#     extent(tree_height_raster), resolution = 3.28, crs = st_crs(tree_height_raster)$proj4string)
-#     , method="ngb")
-#   
-#   
-#   # create patches from the larger raster layers
-#   my_patches <- patchifyR(img=tree_height_raster, patch_size=240)
-#   
-#   # save patches to file
-#   output_directory <- "D:/final_data/2017/"
-#   output_directory_2 <- "D:/final_data/2017_2/"
-#   
-#   # read in the relevant patch
-#   for(f in 1:length(my_patches$patches)){
-#     old_stack <- raster::stack(paste0(output_directory, my_patches$names[[f]],"_",i, ".tif"))
-#     crs(old_stack) <- st_crs(tree_height_raster)$proj4string
-#     new_layer <- projectRaster(from = my_patches$patches[[f]], to = raster(
-#       extent(old_stack), resolution = 3.28, crs = st_crs(tree_height_raster)$proj4string)
-#       , method="ngb")
-#     
-#     # old_stack <- projectRaster(from = old_stack, to = raster(
-#     #   extent(my_patches$patches[[f]]), resolution = 3.28, crs = st_crs(tree_height_raster)$proj4string)
-#     #   , method="ngb")
-#     #   final_stack <- raster::stack(old_stack,my_patches$patches[[f]])  
-#     final_stack <- raster::stack(old_stack,new_layer)  
-#     
-#     writeRaster(final_stack, paste0(output_directory_2, my_patches$names[[f]],"_",i, ".tif"), drivername="Gtiff", overwrite=TRUE)
-#   } 
-#   gc()
-#   
-# }
-# end_time <- Sys.time()
-# loop_time <- end_time - start_time
-
 

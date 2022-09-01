@@ -27,36 +27,11 @@ library(tidyLPA)
 #   -	https://docs.google.com/document/d/1ukkNO3ZJKxfKgVLOuj8XCJPzwH-4hIHouSC66pbk-fc/edit tree crown density using other measures
 
 
-# For each of the emasure i need to get a single value at the level of geography that
+# For each of the measures i need to get a single value at the level of geography that
 # i want to run my later models at, most likely census tract (as opposed to blocK)
 
 
 # read in data
-
-# census tract boundaries
-
-
-"C:\Users\johnf\Documents\UCL\thesis\data\cluster_data\CTA_RailLines"
-"C:\Users\johnf\Documents\UCL\thesis\data\cluster_data\Parks - Chicago Park District Park Boundaries (current)"
-"C:\Users\johnf\Documents\UCL\thesis\data\cluster_data\Waterways_Chicago"
-"C:\Users\johnf\Documents\UCL\thesis\data\cluster_data\Average_Daily_Traffic_Counts_-_Map.csv"
-"C:\Users\johnf\Documents\UCL\thesis\data\cluster_data\Boundaries - Zoning Districts (current).zip"
-"C:\Users\johnf\Documents\UCL\thesis\data\cluster_data\FloodSusceptibilityIndexUrban.zip"
-"C:\Users\johnf\Documents\UCL\thesis\data\cluster_data\il_dot_roads_2017.zip"
-"C:\Users\johnf\Documents\UCL\thesis\data\cluster_data\land_use_2015.zip"
-"C:\Users\johnf\Documents\UCL\thesis\data\cluster_data\TransitAvailability2017CMAP201706.zip"
-"C:\Users\johnf\Documents\UCL\thesis\data\cluster_data\Walkability.zip"
-"C:\Users\johnf\Documents\UCL\thesis\data\cluster_data\Building Footprints (current)"
-"C:\Users\johnf\Documents\UCL\thesis\data\cluster_data\chicago_2010_tracts"
-"C:\Users\johnf\Documents\UCL\thesis\data\cluster_data\chicago_boundaries"
-# 
-# chicago <- st_read("cluster_data/chicago_2010_tracts/geo_export_034e8876-472c-4dd0-88b3-4ea893bbd67f.shp")
-# # drop the ohare tracts
-# chicago <- chicago %>% filter(!name10 %in% c("9800","7706.02"))
-# # make sure it looks correct
-# chicago %>% st_geometry() %>% plot()
-# chicago <- st_transform(chicago, 26916) # convert to NAD83 / UTM zone 16N
-# chicago <- chicago %>% mutate(tract_area=st_area(.))
 chicago <- st_read("cluster_data/chicago_boundaries/blocks/geo_export_0a836b4b-86b6-416d-a2a3-4700d035bb01.shp")
 chicago <- chicago %>% filter(!tractce10 %in% c("980000","770602"))
 chicago <- st_transform(chicago, 26916) # convert to NAD83 / UTM zone 16N
@@ -111,38 +86,6 @@ parks_intersect_pct <- st_intersection(chicago, parks) %>%
 chicago <- left_join(chicago,parks_intersect_pct,by="block_group_id")
 chicago$has_parks <- ifelse(is.na(chicago$has_parks)==TRUE,0,1)
 rm(parks,parks_intersect_pct)
-
-# point to area traffic counts
-
-# traffic_counts <- read_csv("cluster_data/Average_Daily_Traffic_Counts_-_Map.csv")
-# traffic_counts <- st_as_sf(traffic_counts,coords = c("Longitude","Latitude"),crs=4326)
-# traffic_counts <- st_transform(traffic_counts, 26916) # convert to NAD83 / UTM zone 16N
-# traffic_counts <- traffic_counts %>% rename(total_vehicles= `Total Passing Vehicle Volume`)
-# 
-# traffic_counts_raster <- raster(traffic_counts)
-# res(traffic_counts_raster) <- 100
-# traffic_counts_raster <- as(traffic_counts_raster,"SpatialGrid")
-# traffic_counts_sp <- as(traffic_counts,"Spatial")
-# # traff_variogram <- variogram(total_vehicles~1,traffic_counts_sp)
-# # exp_traff_variogram <- fit.variogram(traff_variogram,model=vgm(43638860,"Exp",15689,132077248))
-# # 
-# # kriging_model <- gstat(formula=total_vehicles~1, locations=traffic_counts, model=traffic_variogram)
-# # traffic_counts_raster <- predict(kriging_model,traffic_counts_raster)
-# # 
-# # fit_traff <- gstat(formula=total_vehicles~1, locations=traffic_counts_sp,nmax=4,set=list(idp=.5))
-# # traf_raster <- raster::interpolate(traffic_counts_raster, model=fit_traff)
-# 
-# traff_idw <- idw(total_vehicles~1,traffic_counts_sp,traffic_counts_raster,idp=5)
-# # [inverse distance weighted interpolation]
-# raster_traffic <- raster(traff_idw)
-# raster_traffic <- mask(raster_traffic,chicago)
-# raster_traffic <- raster::scale(raster_traffic)
-# chicago_traffic <- raster::extract(raster_traffic,chicago,fun=mean,na.rm=T,df=T)
-# chicago <- bind_cols(chicago,chicago_traffic)
-# 
-# tm_shape(chicago) +
-#   tm_fill("var1.pred",style = "cont")
-# rm(traff_idw,traffic_counts,traffic_counts_raster,traffic_counts_sp,raster_traffic,chicago_traffic)
 
 # roads
 roads <- st_read("cluster_data/il_dot_roads_2017/HWY2017.shp")
@@ -277,17 +220,7 @@ land_use_intersect_pct <- st_intersection(chicago, land_use) %>%
 chicago <- left_join(chicago,land_use_intersect_pct,by="block_group_id")
 rm(land_use,land_use_intersect_pct)
 
-# flood index
-# flood_index <- st_read(dsn = "cluster_data/FloodSusceptibilityIndex_Urban/FloodSusceptibilityIndex_Urban.gdb",
-#                        layer = "fras_bnd_FloodSusceptibilityIndex_Urban_CMAP_2017")
-# st_layers(dsn = "cluster_data/FloodSusceptibilityIndex_Urban/FloodSusceptibilityIndex_Urban.gdb")
-# 
-# 
-# flood_index <- st_read("cluster_data/FloodSusceptibilityIndex_Urban/FloodSusceptibilityIndex_Urban.gdb/a0000000c.gdbtable")
-
 pop_df <- read_csv("cluster_data/Population_by_2010_Census_Block.csv")
-
-
 pop_df <- pop_df %>% dplyr::select(block_group_id="CENSUS BLOCK FULL",total_pop="TOTAL POPULATION")
 pop_df$block_group_id <- str_sub(pop_df$block_group_id, end=-2)
 #pop_df <- pop_df %>% distinct(block_group_id,.keep_all = T)
@@ -302,19 +235,7 @@ chicago <- chicago %>% mutate(
 
 write.csv(chicago %>% st_drop_geometry(),"cluster_data/chicago_lpa_data2.csv",row.names = F)
 
-# chicago_final <- chicago %>% st_drop_geometry() %>% dplyr::select(
-#   geoid10,has_water_feature,has_parks,average_traffic=layer, 
-#   transit_accessibility=ta_ind_17, pedestian_index=pef_ind_17,starts_with("pct_"),
-#   pop_density)
-# 
-# chicago_final <- chicago_final %>% mutate_all(as.numeric)
-# chicago_final[is.na(chicago_final)] <- 0
-# 
-# write.csv(chicago,"cluster_data/chicago_lpa_data2.csv",row.names = F)
-
 # add in % impervious and % nvdi
-
-
 sent_10m <- raster::stack("cluster_data/sentinel/2017/sent_2_2017_10m.tif")
 names(sent_10m) <- c("blue","green","red","NIR")
 NDVIfun <- function(NIR,RED){
@@ -339,28 +260,6 @@ chicago_high_veg<- chicago_high_veg %>% dplyr::select(high_veg=layer)
 chicago <- bind_cols(chicago,chicago_high_veg)
 rm(chicago_high_veg)
 
-# 8/12 adding in plantable areas - will get a % that tree cover % can be subtracted from 
-# chicago <- chicago %>% st_drop_geometry() %>% dplyr::select(geoid10,plantable_land)
-# write.csv(chicago,"data/plantable_land.csv",row.names = F)
-# get by block
-
-
-# chicago <- chicago %>% st_drop_geometry() %>% dplyr::select(geoid10,impervious_surface,high_veg)
-# 
-# chicago <- chicago %>% dplyr::rename()
-# lpa_data$geoid10 <- as.character(lpa_data$geoid10)
-# lpa_data <- left_join(lpa_data,chicago,by="geoid10")
-# tm_shape(chicago) +
-#   tm_fill("high_veg",style = "cont")
-# 
-# maybe change to block groups?
-# chicago_block_group <- chicago %>% mutate(
-#   block_group=str_sub(blockce10,1,1)
-# ) %>% mutate(block_group=paste0(tractce10,block_group,sep=""))
-# 
-# chicago_block_group <- chicago_block_group %>% group_by(block_group)%>% 
-#   summarise(do_union = TRUE)
-
 # 8/10/22 add in railroads
 railroads <- st_read("cluster_data/Illinois_Railroads/Illinois_Railroads.shp")
 
@@ -382,13 +281,13 @@ chicago$has_railroads <- ifelse(is.na(chicago$has_railroads)==TRUE,0,1)
 rm(railroads,railroads_intersect)
 
 
-lpa_data <- read_csv("cluster_data/chicago_lpa_data2.csv")
+lpa_data <- read_csv("cluster_data/chicago_lpa_data2csv")
 lpa_data$block_group_id <- as.character(lpa_data$block_group_id)
 chicago <- chicago %>% st_drop_geometry() 
 chicago <- chicago %>% distinct(block_group_id,.keep_all = T)
 lpa_data <- left_join(lpa_data,chicago,by="block_group_id")
 
-write.csv(chicago,"cluster_data/chicago_lpa_data2.csv",row.names = F)
+write.csv(chicago,"cluster_data/chicago_lpa_data2csv",row.names = F)
 
 ##################################################################################
 # Perform an LPA
@@ -406,6 +305,9 @@ lpa_data <- lpa_data %>% select(-geoid10,-plantable_land) %>% scale() %>% as.dat
 lpa_data <- lpa_data %>% select(-pct_agriculture_area,-pct_planned_development,-pct_parks, -pct_industrial_area,-pct_open_space_area,-pct_commercial)
 lpa_data <- lpa_data %>% filter(is.na(pct_commercial_area)==FALSE)
 
+
+# Run many different versions, MPLUS is better but each of these generates slightly 
+# different clusters
 c2_12a <- lpa_data %>% 
   estimate_profiles(2:12)
 
@@ -426,127 +328,6 @@ c2_12f <- lpa_data %>%
 
 c2_12g <- lpa_data %>% 
   estimate_profiles(2:12)
-
-
-# 7 in C/ 10 in C
-# 9 in b
-# 8 in 1st
-# 1st 8:2366326. 2368119.   0.954 0.0430
-# b 9  :2296679. 2298672.   0.944 0.0217 
-# c 7  :2473828. 2475419.   0.951 0.0836
-# c 10 :2281371. 2283565.   0.945  0.0217
-
-# a,7 2185642. 2187093.   0.964 0.0504
-# c,9 2199892. 2201711.   0.943 0.0333
-# g,8 2211203. 2212838.   0.959 0.0425 
-
-
-# > get_fit(c2_12a) %>%  select(Model,Classes,AIC,BIC,Entropy,n_min) 
-# # A tibble: 11 x 6
-# Model Classes      AIC      BIC Entropy    n_min
-# <dbl>   <dbl>    <dbl>    <dbl>   <dbl>    <dbl>
-#   1     1       2 2451964. 2452497.   0.995 0.309   
-# 2     1       3 2386813. 2387530.   0.966 0.308   
-# 3     1       4 2369447. 2370347.   0.956 0.162   
-# 4     1       5 2255577. 2256661.   0.962 0.0993  
-# 5     1       6 2226123. 2227391.   0.961 0.0904  
-# 6     1       7 2185642. 2187093.   0.964 0.0504  
-# 7     1       8 2204648. 2206283.   0.957 0.0321  
-# 8     1       9 2218404. 2220223.   0.845 0       
-# 9     1      10 2206620. 2208623.   0.893 0.000216
-# 10     1      11 2098513. 2100699.   0.895 0.000324
-# 11     1      12 2069882. 2072252.   0.859 0       
-# > get_fit(c2_12b) %>%  select(Model,Classes,AIC,BIC,Entropy,n_min) 
-# # A tibble: 11 x 6
-# Model Classes      AIC      BIC Entropy  n_min
-# <dbl>   <dbl>    <dbl>    <dbl>   <dbl>  <dbl>
-#   1     1       2 2451964. 2452497.   0.995 0.309 
-# 2     1       3 2386811. 2387528.   0.966 0.308 
-# 3     1       4 2369447. 2370347.   0.956 0.162 
-# 4     1       5 2255577. 2256662.   0.962 0.0993
-# 5     1       6 2215062. 2216329.   0.965 0.0505
-# 6     1       7 2218399. 2219850.   0.951 0.0835
-# 7     1       8 2195837. 2197472.   0.956 0.0225
-# 8     1       9 2214965. 2216783.   0.881 0     
-# 9     1      10 2214889. 2216891.   0.851 0     
-# 10     1      11 1926499. 1928685.   0.891 0     
-# 11     1      12 2132804. 2135173.   0.900 0     
-# > get_fit(c2_12c) %>%  select(Model,Classes,AIC,BIC,Entropy,n_min) 
-# # A tibble: 11 x 6
-# Model Classes      AIC      BIC Entropy  n_min
-# <dbl>   <dbl>    <dbl>    <dbl>   <dbl>  <dbl>
-#   1     1       2 2451963. 2452497.   0.995 0.309 
-# 2     1       3 2386813. 2387530.   0.966 0.308 
-# 3     1       4 2369451. 2370352.   0.956 0.162 
-# 4     1       5 2255575. 2256659.   0.962 0.0993
-# 5     1       6 2226118. 2227386.   0.961 0.0900
-# 6     1       7 2226161. 2227612.   0.890 0     
-# 7     1       8 2177898. 2179533.   0.954 0.0504
-# 8     1       9 2199892. 2201711.   0.943 0.0333
-# 9     1      10 2099081. 2101083.   0.885 0     
-# 10     1      11 2069919. 2072105.   0.888 0     
-# 11     1      12 2118575. 2120944.   0.865 0     
-# > get_fit(c2_12d) %>%  select(Model,Classes,AIC,BIC,Entropy,n_min) 
-# # A tibble: 11 x 6
-# Model Classes      AIC      BIC Entropy    n_min
-# <dbl>   <dbl>    <dbl>    <dbl>   <dbl>    <dbl>
-#   1     1       2 2451964. 2452497.   0.995 0.309   
-# 2     1       3 2386815. 2387532.   0.966 0.308   
-# 3     1       4 2272942. 2273842.   0.973 0.0997  
-# 4     1       5 2255576. 2256660.   0.962 0.0993  
-# 5     1       6 2226115. 2227383.   0.961 0.0900  
-# 6     1       7 2185641. 2187092.   0.964 0.0504  
-# 7     1       8 2179115. 2180750.   0.956 0.0337  
-# 8     1       9 2112997. 2114815.   0.897 0       
-# 9     1      10 2144706. 2146708.   0.893 0.000216
-# 10     1      11 2069916. 2072102.   0.886 0.00315 
-# 11     1      12 2129326. 2131695.   0.858 0.00505 
-# > get_fit(c2_12e) %>%  select(Model,Classes,AIC,BIC,Entropy,n_min) 
-# # A tibble: 11 x 6
-# Model Classes      AIC      BIC Entropy  n_min
-# <dbl>   <dbl>    <dbl>    <dbl>   <dbl>  <dbl>
-#   1     1       2 2451963. 2452497.   0.995 0.309 
-# 2     1       3 2386812. 2387529.   0.966 0.308 
-# 3     1       4 2285365. 2286265.   0.973 0.0431
-# 4     1       5 2255578. 2256662.   0.962 0.0993
-# 5     1       6 2261581. 2262849.   0.950 0.0431
-# 6     1       7 2185637. 2187089.   0.964 0.0504
-# 7     1       8 2177895. 2179530.   0.954 0.0504
-# 8     1       9 2180278. 2182096.   0.873 0.0519
-# 9     1      10 2145129. 2147131.   0.889 0.0380
-# 10     1      11 2069906. 2072092.   0.888 0     
-# 11     1      12 1965496. 1967866.   0.901 0     
-# > get_fit(c2_12f) %>%  select(Model,Classes,AIC,BIC,Entropy,n_min) 
-# # A tibble: 11 x 6
-# Model Classes      AIC      BIC Entropy     n_min
-# <dbl>   <dbl>    <dbl>    <dbl>   <dbl>     <dbl>
-#   1     1       2 2451964. 2452497.   0.995 0.309    
-# 2     1       3 2386812. 2387529.   0.966 0.308    
-# 3     1       4 2369453. 2370353.   0.956 0.161    
-# 4     1       5 2340028. 2341112.   0.957 0.0887   
-# 5     1       6 2226117. 2227385.   0.961 0.0900   
-# 6     1       7 2209468. 2210919.   0.964 0.0166   
-# 7     1       8 2214921. 2216556.   0.941 0.0814   
-# 8     1       9 2177941. 2179760.   0.885 0        
-# 9     1      10 2179054. 2181056.   0.849 0.0000432
-# 10     1      11 2156569. 2158755.   0.858 0        
-# 11     1      12 1925175. 1927544.   0.874 0        
-# > get_fit(c2_12g) %>%  select(Model,Classes,AIC,BIC,Entropy,n_min) 
-# # A tibble: 11 x 6
-# Model Classes      AIC      BIC Entropy   n_min
-# <dbl>   <dbl>    <dbl>    <dbl>   <dbl>   <dbl>
-#   1     1       2 2451963. 2452497.   0.995 0.309  
-# 2     1       3 2386811. 2387528.   0.966 0.308  
-# 3     1       4 2386908. 2387809.   0.814 0.0353 
-# 4     1       5 2255572. 2256657.   0.962 0.0993 
-# 5     1       6 2226114. 2227382.   0.961 0.0900 
-# 6     1       7 2218406. 2219857.   0.951 0.0835 
-# 7     1       8 2211203. 2212838.   0.959 0.0425 
-# 8     1       9 2214943. 2216762.   0.877 0.00918
-# 9     1      10 2174459. 2176461.   0.888 0      
-# 10     1      11 2137217. 2139403.   0.891 0      
-# 11     1      12 2029439. 2031809.   0.891 0     
-# 
 
 lpa_data  %>%
   estimate_profiles(3:13,
@@ -617,6 +398,8 @@ list_of_datasets <- list("clust_8f" = get_data(c2_12f$model_1_class_8),
  openxlsx::write.xlsx(list_of_datasets,
                       file="lpa_assignments_8-12-22.xlsx")
 
+################################################################################
+# Visually Inspect the different models to compare results
 library(ggplot2)
 clust_7a <- readxl::read_xlsx("lpa_assignments_8-12-22.xlsx",sheet="clust_8f")
 clust_8g <- readxl::read_xlsx("lpa_assignments_8-12-22.xlsx",sheet="clust_8g")

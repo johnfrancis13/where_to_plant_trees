@@ -4,7 +4,11 @@ library(sf)
 library(tmap)
 library(lidR)
 library(raster)
-# pull the lidar data that we need
+
+################################################################################
+# THIS FILE CONTAINS LOTS OF LITTLE SNIPS OF CODE FOR VARIOUS PART OF THE CLEANING
+# PROCESS
+################################################################################
 
 # in QGIS I clipped the grid tiles to the chicago boundary so i could get a list of 
 # grid tiles to unzip

@@ -5,7 +5,7 @@ library(raster)
 library(lidR)
 library(tmap)
 
-# Proof Concept Steps
+# Steps
 # 1. Unzip RGB and LiDAR tiles
 # 2. Read in LiDAR tiles and paste together 
 # 3. Read in RGB and create a vegetation mask
@@ -39,6 +39,28 @@ names(sent_2_2017_20m) <- c("B5", 'B6', 'B7', 'B11','B12',"B8a")
 
 #chicago_outline <- st_read("../../term one/Principles of Spatial Analysis/data/raw/assessment/chicago_boundaries/geo_export_1889da91-0253-48fe-bbfd-92c0593875b4.shp")
 #chicago_outline <- chicago_outline %>% st_transform(.,crs=st_crs(r))
+
+
+# ################################################################################
+# # Project the NAIP images one time to massively speed up the process for the big loop later
+# ################################################################################
+# 
+# naip_list <- unique(rgb_match$final_path)
+# naip_list <- naip_list[2:30]
+# naip_list2 <- gsub("D:/chicago_rgb/2017/Bulk Order naip_chicago_2017_sep_9/NAIP/","",naip_list)
+# 
+# for(i in 1:length(naip_list)){
+#   print(i)
+#   # need to create a raster stack with all of the variables needed for ML at the same resolution
+#   img_ras <- stack(naip_list[i])
+#   # project raster to be same as the point cloud - this take a bit to run....
+#   img_ras <- projectRaster(img_ras,crs="+proj=tmerc +lat_0=36.66666666666666 +lon_0=-88.33333333333333 +k=0.9999749999999999 +x_0=300000.0000000001 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=us-ft +no_defs")
+#   
+#   # save to external drive
+#   writeRaster(img_ras, paste0("D:/chicago_rgb/2017/naip_projected/", naip_list2[i]), drivername="Gtiff", overwrite=TRUE)
+#   
+# }
+# 
 
 # Short function to calculate NVDI
 NDVIfun <- function(NIR, Red) {
@@ -147,7 +169,7 @@ patchifyR <- function(img, patch_size){
 i=1
 start_time <- Sys.time()
 ################## Loop over the 1131 Lidar files ##############################
-for(i in  1123:length(lidarlist)){
+for(i in  1:length(lidarlist)){
   print(i)
   #### Read in the LAS File
   temp_las <- readLAS(lidarlist_path[i])
@@ -228,73 +250,3 @@ loop_time <- end_time - start_time
 
 
 
-
-
-
-################################################################################
-# Project the NAIP images
-################################################################################
-
-naip_list <- unique(rgb_match$final_path)
-naip_list <- naip_list[2:30]
-naip_list2 <- gsub("D:/chicago_rgb/2017/Bulk Order naip_chicago_2017_sep_9/NAIP/","",naip_list)
-
-for(i in 1:length(naip_list)){
-  print(i)
-  # need to create a raster stack with all of the variables needed for ML at the same resolution
-  img_ras <- stack(naip_list[i])
-  # project raster to be same as the point cloud - this take a bit to run....
-  img_ras <- projectRaster(img_ras,crs="+proj=tmerc +lat_0=36.66666666666666 +lon_0=-88.33333333333333 +k=0.9999749999999999 +x_0=300000.0000000001 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=us-ft +no_defs")
-  
-  # save to external drive
-  writeRaster(img_ras, paste0("D:/chicago_rgb/2017/naip_projected/", naip_list2[i]), drivername="Gtiff", overwrite=TRUE)
-  
-}
-
-################################################################################
-# Recereate a raster of chicago from the NAIP images
-################################################################################
-
-# mosaic them altogether and then cut out the outline?
-# Will need to do this for 2019/21, but can practice with 2017
-rgb_match <- read.csv("D:/chicago_rgb/lidar_naip_2017_match.csv", header = T,stringsAsFactors = F)
-naip_list <- unique(rgb_match$final_path)
-naip_list <- naip_list[2:30]
-naip_list2 <- gsub("D:/chicago_rgb/2017/Bulk Order naip_chicago_2017_sep_9/NAIP/","",naip_list)
-
-
-# mosaic_rasters(gdalfile=c(naip_list),dst_dataset=file.path("D:/chicago_rgb/","test_mosaic.envi"),
-#                separate=TRUE,of="ENVI",verbose=TRUE)
-
-# Mosaic the raster together using gdal utilities
-mosaic_rasters(gdalfile=c(naip_list),dst_dataset=file.path("D:/chicago_rgb/","test_mosaic.tif"),
-               separate=FALSE,of="GTiff",verbose=TRUE)
-
-
-
-# read it back in
-full_raster <- raster("D:/chicago_rgb/test_mosaic.tif")
-
-#full_raster <- raster("D:/chicago_rgb/test_mosaic_multi.tif")
-
-chicago_outline <- st_read("../../term one/Principles of Spatial Analysis/data/raw/assessment/chicago_boundaries/geo_export_1889da91-0253-48fe-bbfd-92c0593875b4.shp")
-chicago_outline <- st_transform(chicago_outline,st_crs(full_raster))
-
-chicago_tracts <- st_read("../../term two/advanced_topics/data/raw/chicago_2010_tracts/geo_export_034e8876-472c-4dd0-88b3-4ea893bbd67f.shp")
-chicago_tracts <- st_transform(chicago_tracts,st_crs(full_raster))
-chicago_tracts <- chicago_tracts %>% dplyr::filter(!tractce10 %in% c("770602","980000"))
-
-chicago_tracts_outline <- chicago_tracts %>% summarise()
-#chicago_outline <- chicago_outline %>% st_intersection(chicago_tracts,.)
-
-full_raster <- full_raster %>% crop(chicago_tracts_outline) %>% mask(chicago_tracts_outline)
-
-plot(full_raster)
-plot(chicago_tracts_outline,add=T)
-chicago_tracts %>% st_geometry() %>% plot(.,add=T)
-
-# not sure why this doesnt work given that plot works normally...
-tm_shape(chicago_tracts_outline) +
-  tm_polygons(alpha = 0, border.col = "black") +
-  tm_shape(full_raster) +
-  tm_rgb()

@@ -133,41 +133,6 @@ chicago <- chicago %>% mutate(
   plantable_land_area =(high_veg*block_area)-(pct_tree_cover*block_area),
   
 )
-# drop some excess variables
-#chicago <- chicago %>% select(-starts_with("tracts"),-canopy_height_with0s)
-
-
-# try and group by block and pick the cluster with the largest representation...
-# chicago <- chicago %>% mutate(
-#  tree_area= pct_tree_cover*block_area,
-#  mean_pm25_raw=scales::rescale(chicago$mean_pm25, to=c(0,1))
-# )
-# 
-# block_clusters <- chicago %>% st_drop_geometry() %>%  
-#   group_by(block_group_id) %>% 
-#   count(lpa_8) %>% 
-#   slice(which.max(n)) %>% 
-#   select(-n)
-# 
-# chicago_block <- chicago %>% group_by(block_group_id) %>%  summarise(
-#   tracts_lst_avg = mean(tracts_lst_avg,na.rm=T),
-#   tree_area = sum(tree_area,na.rm=T),
-#   avg_canopy_height = mean(avg_canopy_height,na.rm=T),
-#   mean_pm25 = mean(mean_pm25_raw,na.rm=T),
-#   bg_area= sum(block_area, na.rm=T),
-#   do_union=T)
-# 
-# chicago_block <- left_join(chicago_block,block_clusters,by="block_group_id")
-# 
-# chicago_block <- chicago_block %>% mutate(
-#   pct_tree_cover=tree_area/bg_area
-# )
-# 
-# chicago_block <- chicago_block %>% mutate(
-#   avg_scaled_lst = as.numeric(scale(tracts_lst_avg)),
-#   avg_canopy_height_scaled = as.numeric(scale(avg_canopy_height)),
-#   pct_tree_cover = as.numeric(pct_tree_cover )
-# )
 
 # exploratory maps
 tmap::tm_shape(chicago) +
@@ -177,8 +142,6 @@ tmap::tm_shape(chicago) +
   tmap::tm_fill("lpa_8",style = "cat",palette = "Set3") +
   tmap::tm_layout(legend.text.size = .6,
                   legend.outside = T)
-
-
 
 ################################################################################
 # Put together some descriptives
@@ -399,40 +362,6 @@ chicago %>%
 #If this occurs, then we have 'non-stationarity' - this is when the global model does not
 #represent the relationships between variables that might vary locally.
 
-# split the extent into thirds, see if that works
-# > st_bbox(chicago)
-# xmin      ymin      xmax      ymax 
-# 428578.1 4610424.0  456468.9 4652555.7 
-
-# maybe try ninths?
-chicago_top_third <- chicago %>% st_crop(.,
-                                         xmin=428578.1,
-                                         xmax=(456468.9-9296.933-9296.933),
-                                         ymin=(4610424.0+14043.9+14043.9),
-                                         ymax=4652555.7)
-
-chicago_bot_third <- chicago %>% st_crop(.,
-                                         xmin=428578.1,
-                                         xmax=456468.9,
-                                         ymin=(4610424.0+14043.9),
-                                         ymax=(4652555.7-14043.9))
-
-chicago_mid_third <- chicago %>% st_crop(.,
-                                         xmin=428578.1,
-                                         xmax=456468.9,
-                                         ymin=4610424.0,
-                                         ymax=(4652555.7-14043.9-14043.9))
-
-
-
-# need to make some assumptions about trees to run simulations
-coordsW <- chicago_top_third %>%
-  st_centroid()%>%
-  st_geometry()
-
-coordsW2 <- st_coordinates(coordsW)
-
-chicago_top_third <- cbind(chicago_top_third,coordsW2)
 
 # chicago_write <- chicago %>% st_drop_geometry() %>% select(
 #   geoid10,avg_scaled_lst,avg_canopy_height_scaled,pct_tree_cover,mean_pm25_scaled,lpa_8,X,Y)
@@ -441,17 +370,17 @@ chicago_top_third <- cbind(chicago_top_third,coordsW2)
 # write.csv(chicago_write,"D:/final_data/chicago_gwr_data.csv",row.names = F)
 # chicago_nb <- chicago %>%
 #   spdep::poly2nb(., queen=T)
+# # 
+# chicago_knn <- coordsW2 %>%
+#   spdep::knearneigh(., k=500)
 # 
-chicago_knn <- coordsW2 %>%
-  spdep::knearneigh(., k=500)
-
-chicago_knn<- chicago_knn %>% spdep::knn2nb()
-
-chicago_knn_weight <- chicago_knn %>% spdep::nb2listw(., style="C", zero.policy = T)
-# Queens matrix
-# chicao.queens_weight <- chicago_nb %>%
-#   spdep::nb2listw(., style="C", zero.policy = T)
-
+# chicago_knn<- chicago_knn %>% spdep::knn2nb()
+# 
+# chicago_knn_weight <- chicago_knn %>% spdep::nb2listw(., style="C", zero.policy = T)
+# # Queens matrix
+# # chicao.queens_weight <- chicago_nb %>%
+# #   spdep::nb2listw(., style="C", zero.policy = T)
+# 
 
 
 ################################################################################
@@ -754,18 +683,6 @@ chicago$plantable_land
 
 # can calculate the maximum number of trees to be added to an area
 #each tree = (3.141453) *( 3 ^2)
-
-# 4 maps... if we just wanted to target individual vars, vs a method for combining all 3
-
-##### 1 - Equity #####
-# starting with the blocks with the smallest pct_tree cover, target the blocks that
-# have plantable land
-
-
-
-##### 2 - LST #####
-##### 3 - AQ #####
-##### 4 - ALL #####
 
 
 #################################################################################
@@ -1173,7 +1090,10 @@ all_chicago_lst_gwr <- all_chicago_lst_gwr %>%  distinct(geoid10,.keep_all = TRU
 # write.csv(all_chicago_lst_gwr,"D:/final_data/gwr_lst_results_interaction2.csv",row.names = F)
  
 
-###################################################################################
+################################################################################
+################################################################################
+# With GWR Results in hand, i can run some tests and the simulations
+
 lst_gwr <- read_csv("D:/final_data/gwr_lst_results_interaction2.csv")
 aq_gwr <- read_csv("D:/final_data/gwr_aq_results_interaction2.csv")
 
@@ -1567,15 +1487,6 @@ tmap::tm_shape(comm_area) +
 ### Figures
 ################################################################################
 #1. 1x3 map of outcome variables at the block level
-
-# extract a basemap
-chicago_osm <- chicago %>% st_bbox() %>% tmaptools::read_osm(type="stamen-terrain")
-
-# type = c("osm", "osm-bw",
-#          "maptoolkit-topo", "waze", "bing", "stamen-toner", "stamen-terrain",
-#          "stamen-watercolor", "osm-german", "osm-wanderreitkarte", "mapbox", "esri",
-#          "esri-topo", "nps", "apple-iphoto", "skobbler", "hillshade", "opencyclemap",
-#          "osm-transport", "osm-public-transport", "osm-bbike", "osm-bbike-german")
 
 ## Map with raster layer to make sure everything looks alright
 water <- st_read("C:/Users/johnf/Box/UCL/thesis/cluster_data/Waterways_Chicago/geo_export_110c65a5-f82f-43cd-9b41-9ae24632d43d.shp")
